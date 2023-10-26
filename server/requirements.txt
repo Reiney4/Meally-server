@@ -19,6 +19,7 @@ Flask-Migrate
 Flask-RESTful
 Flask-SQLAlchemy==3.0.2
 greenlet
+gunicorn
 importlib-metadata
 importlib-resources
 iniconfig
@@ -52,7 +53,7 @@ toml
 tomli
 traitlets
 typing_extensions
-validate-email-addres
+validate-email-address
 wcwidth
 Werkzeug
 zipp
