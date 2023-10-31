@@ -1,1 +1,0 @@
-# Meally-server
