@@ -23,7 +23,7 @@ app.json.compact = False
 app.json_as_ascii = False
 db.init_app(app)
 
-with app.app_context(): 
+with app.app_context():
      db.create_all()
 
 
@@ -31,7 +31,9 @@ with app.app_context():
 def index():
     return "Welcome to Mealy!"
 
-# Sign up
+# user authentication.
+
+# Sign up====working 
 @app.route('/signup', methods=['POST'])
 def signup():
     data = request.json
@@ -55,7 +57,7 @@ def signup():
 
     return jsonify({'message':'Signed up successfully'}), 201
 
-# Login route
+# Login route====working
 @app.route('/login', methods=['POST'])
 def login():
     auth = request.json
@@ -82,67 +84,129 @@ def login():
         'Could not verify',
         403,
         {'WWW-Authenticate': 'Basic realm = "Wrong password"'}
-    )
 
-@app.route('/profile/<username>', methods=['GET'])
-@jwt_required()
-def user_profile(username):
-    print(username)
-    if not username:
-        return jsonify({'No username found!'}), 404
-    
-    user = User.query.filter_by(username=username).first()
-    print('user found is:', user)
+     )
 
-    if not user:
-        return jsonify({'User not found!'}), 404
 
-    response_body = {
-        'username' : user.username,
-        'email' : user.email,
-        'role' : user.role,
-        'id' : user.id
+# get all users
+@app.route('/users', methods=['GET'])
+def get_all_users():
+    users = User.query.all()
+
+    users_info = []
+
+    for user in users:
+        user_info = {
+            'id': user.id,
+            'username': user.username,  
+            'email': user.email,          
+            'password': user.password,
+            'role': user.role,           
+            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': user.updated_at.strftime('%Y-%m-%d %H:%M:%S') if user.updated_at else None
+        }
+        users_info.append(user_info)
+
+    return jsonify(users_info)
+
+# to get a single user using the ID
+@app.route('/users/<int:user_id>', methods=['GET'])
+def get_user_by_id(user_id):
+    user = User.query.get(user_id)
+
+    if user is None:
+        return jsonify({'message': 'User not found'}), 404
+
+    user_info = {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'role': user.role,
+        'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'updated_at': user.updated_at.strftime('%Y-%m-%d %H:%M:%S') if user.updated_at else None
     }
 
-    return jsonify(response_body)
+    return jsonify(user_info)
+
+# caterer can be able to manage orders
+
+# @app.route('/profile/<username>', methods=['GET'])
+# @jwt_required()
+# def user_profile(username):
+#     print(username)
+#     if not username:
+#         return jsonify({'No username found!'}), 404
+    
+#     user = User.query.filter_by(username=username).first()
+#     print('user foun is:', user)
+
+#     if not user:
+#         return jsonify({'User not found!'}), 404
+
+#     response_body = {
+#         'username' : user.username,
+#         'email' : user.email,
+#         'role' : user.role,
+#         'id' : user.id
+#     }
+
+#     return jsonify(response_body)
 
 
-@app.route('/caterer', methods=['POST'])
+@app.route('/caterers', methods=['GET'])
+def get_all_caterers():
+    caterers = Caterer.query.all()
+    
+    caterers_info = []
+
+    for caterer in caterers:
+        caterer_info = {
+            'id': caterer.id,
+            'user_id': caterer.user_id,
+            'name': caterer.name,
+            'created_at': caterer.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': caterer.updated_at.strftime('%Y-%m-%d %H:%M:%S') if caterer.updated_at else None
+        }
+        caterers_info.append(caterer_info)
+
+    return jsonify(caterers_info)
+
+# @app.route('/caterer/info', methods=['GET'])
+# @jwt_required()
+# def get_caterer_info():
+#     current_user = get_jwt_identity()
+#     caterer = Caterer.query.filter_by(user_id=current_user['id']).first()
+
+#     if not caterer:
+#         return jsonify({'message': 'Caterer not found'}), 404
+
+#     response_body = {
+#         'name': caterer.name,
+#         'star_meal': caterer.star_meal,
+#         'created_at': caterer.created_at,
+#         'updated_at': caterer.updated_at
+#     }
+
+#     return jsonify(response_body)
+
+@app.route('/caterers', methods=['POST'])
 def caterer_login():
-    data = request.get_json()
-    email = request.json['email']
-    password = request.json['password']
+    data = request.get_json()  # Parse JSON data from the request body
+
+    email = data.get('email')  # Access 'email' from the parsed JSON data
+    password = data.get('password')  # Access 'password' from the parsed JSON data
     role = 'caterer'
 
     user = User.query.filter_by(email=email, role=role).first()
 
     if not user:
-        return jsonify({"Message":"User does not exist!"}), 401
-    
+        return jsonify({"Message": "User does not exist!"}), 401
+
     if bcrypt.check_password_hash(user.password, password):
-        token = create_access_token({'id':user.id, 'role': user.role})
+        token = create_access_token({'id': user.id, 'role': user.role})
         return jsonify({"access_token": token})
-    
-    return jsonify({"message":"Invalid credentials!"}), 404
 
-    
-@app.route('/caterer/info', methods=['GET'])
-@jwt_required()
-def get_caterer_info():
-    current_user = get_jwt_identity()
-    caterer = Caterer.query.filter_by(user_id=current_user['id']).first()
-
-    if not caterer:
-        return jsonify({'message': 'Caterer not found'}), 404
-
-    response_body = {
-        'name': caterer.name,
-        'star_meal': caterer.star_meal,
-        'created_at': caterer.created_at,
-        'updated_at': caterer.updated_at
-    }
-
-    return jsonify(response_body)
+    return jsonify({"message": "Invalid credentials!"}), 404
 
 
 @app.after_request
