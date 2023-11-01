@@ -9,7 +9,7 @@ from models import db, User, Meal, Order, Caterer
 app = Flask(__name__)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
-migrate = Migrate(app)
+migrate = Migrate(app, db)
 CORS(app, supports_credentials=True)
 
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=5)
@@ -23,7 +23,7 @@ app.json.compact = False
 app.json_as_ascii = False
 db.init_app(app)
 
-with app.app_context():
+with app.app_context(): 
      db.create_all()
 
 
@@ -92,7 +92,7 @@ def user_profile(username):
         return jsonify({'No username found!'}), 404
     
     user = User.query.filter_by(username=username).first()
-    print('user foun is:', user)
+    print('user found is:', user)
 
     if not user:
         return jsonify({'User not found!'}), 404
@@ -186,18 +186,20 @@ def change_password():
 
 @app.route('/meals', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def manage_meal_options():
+    # Fetching all meal options
     if request.method == 'GET':
         meal_options = Meal.query.all()
         meal_options_list = [meal_option.to_dict() for meal_option in meal_options]
         return jsonify({"meal options": meal_options_list})
     
+    # Adding new meal option
     elif request.method == 'POST':
         meal_option_name = request.json.get('meal_option')
         new_meal_option = Meal(name=meal_option_name)
         db.session.add(new_meal_option)
         db.session.commit()
         return jsonify({"message": "Meal option added successfully"})
-    
+    # Updating meal option
     elif request.method == 'PUT':
         meal_option_id = request.json.get('meal_option_id')
         new_meal_option_name= request.json.get('new_meal_option')
@@ -208,7 +210,8 @@ def manage_meal_options():
             return jsonify({"message": "Meal option updated successfully"})
         else:
             return jsonify({"message": "Meal option not found"})
-        
+
+    # Deleting meal option 
     elif request.method == 'DELETE':
         meal_option_id = request.json.get('meal_option_id')
         meal_option = Meal.query.get(meal_option_id)
