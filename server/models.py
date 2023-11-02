@@ -22,7 +22,11 @@ class ValidationError(Exception):
 class SerializerMixin:
     def as_dict(self):
         result = {}
+
+        for c in self._table_.columns:
+
         for c in self.__table__.columns:
+
             result[c.name] = getattr(self, c.name)
         return result
 
@@ -67,7 +71,11 @@ class Caterer(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
+
+    # star_meal = db.Column(db.string(200), nullable=False)
+
     star_meal = db.Column(db.Integer, nullable=False)
+
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
