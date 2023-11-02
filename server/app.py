@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import create_access_token, JWTManager, get_jwt, get_jwt_identity, unset_jwt_cookies, jwt_required
 from flask_cors import CORS
-from models import db, User, Meal, Order, Caterer
+from .models import db, User, Meal, Order, Caterer
 
 app = Flask(__name__)
 jwt = JWTManager(app)
@@ -45,7 +45,7 @@ def register():
 
     user_exists = User.query.filter_by(username=username).first() is not None
 
-    if user_exists:
+    if user_exists:  
         return jsonify({"message": "Username already exists"}), 409
     
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -67,7 +67,7 @@ def login():
         .first()
     if not user:
         return make_response("User does not exist.", 401)
-    
+     
     if bcrypt.check_password_hash(user.password, auth.get('password')):
         token = create_access_token({
             "id": user.id,
@@ -92,7 +92,7 @@ def user_profile(username):
         return jsonify({'No username found!'}), 404
     
     user = User.query.filter_by(username=username).first()
-    print('user foun is:', user)
+    print('user found is:', user)
 
     if not user:
         return jsonify({'User not found!'}), 404
