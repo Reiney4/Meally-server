@@ -144,18 +144,21 @@ with app.app_context():
         db.session.commit()
 
   # Seed MenuMeals
-    def seed_menu_meals(num_menu_meals):
-        menu_meals = set()  # Use a set to keep track of unique relationships
-        while len(menu_meals) < num_menu_meals:
-            menu_id = random.randint(1, num_menus)
-            meal_id = random.randint(1, num_meals)
-            # Check if the relationship already exists in the set
-            if (menu_id, meal_id) not in menu_meals:
-                menu_meals.add((menu_id, meal_id))
-                menu_meal = MenuMeals(menu_id=menu_id, meal_id=meal_id)
+def seed_menu_meals(num_menu_meals):
+    menu_meals = set()  # Use a set to keep track of unique relationships
+    while len(menu_meals) < num_menu_meals:
+        menu_id = random.randint(1, num_menus)
+        meal_id = random.randint(1, num_meals)
+        # Check if the relationship already exists in the set
+        if (menu_id, meal_id) not in menu_meals:
+            menu_meals.add((menu_id, meal_id))
+            menu_meal = MenuMeals(menu_id=menu_id, meal_id=meal_id)
+            try:
                 db.session.add(menu_meal)
-
-        db.session.commit()
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                continue
 
    # Seed Orders
 def seed_orders(num_orders):
