@@ -36,7 +36,7 @@ with app.app_context():
             caterer = Caterer(
                 user_id=random.randint(1, db.session.query(User).count()),
                 name=fake.company(),
-                password="password",
+                # password="password",
             )
             caterers.append(caterer)
 
@@ -176,3 +176,12 @@ def seed_orders(num_orders):
 
     db.session.add_all(orders)
     db.session.commit()
+
+    # Seed data
+with app.app_context():
+    seed_users(10)  
+    seed_caterers(5)  
+    seed_meals()  
+    seed_menus(5)  
+    seed_menu_meals(20) 
+    seed_orders(50) 
