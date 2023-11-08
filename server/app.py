@@ -387,6 +387,7 @@ def view_caterer_earnings():
         return jsonify({"error": "Only caterers or admins can view earnings"})
 
 
+
     today = date.today()
     earnings = calculate_caterer_earnings(current_user.id, today)
     return jsonify({"earnings": earnings})
