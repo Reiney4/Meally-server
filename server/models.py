@@ -23,6 +23,8 @@ class SerializerMixin:
     def as_dict(self):
         result = {}
 
+        # for c in self._table_.columns:
+
         for c in self.__table__.columns:
 
             result[c.name] = getattr(self, c.name)
