@@ -22,11 +22,7 @@ class ValidationError(Exception):
 class SerializerMixin:
     def as_dict(self):
         result = {}
-
-        # for c in self._table_.columns:
-
-        for c in self.__table__.columns:
-
+        for c in self._table_.columns:
             result[c.name] = getattr(self, c.name)
         return result
 
@@ -42,7 +38,7 @@ class User(db.Model, SerializerMixin):
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
 
-    def __repr__(self):
+    def _repr_(self):
         return f'<User(id={self.id}, username={self.username}, email={self.email}, role={self.role})>'
     
     def set_password(self, password):
@@ -70,16 +66,13 @@ class Caterer(db.Model, SerializerMixin):
     __tablename__ = 'caterers'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-
-    # star_meal = db.Column(db.string(200), nullable=False)
-
-    star_meal = db.Column(db.Integer, nullable=False)
-
+    username = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
-    def __repr__(self):
+    def _repr_(self):
         return f'<Caterer(id={self.id}, name={self.name})>'
 
 
@@ -101,7 +94,7 @@ class Meal(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
-    def __repr__(self):
+    def _repr_(self):
         return f'<Meal(id={self.id}, name={self.name}, price={self.price})>'
 
 
@@ -122,21 +115,6 @@ class Meal(db.Model, SerializerMixin):
         if price <= 0 or price > 10000:
             raise ValidationError('Price must be within the range of 0 to 10,000')
         return price
-    
-    def __repr__(self):
-        return f'<Meal(id={self.id}, name={self.name}, price={self.price})>'
-
-    def to_dict(self):
-        return {
-        'id': self.id,
-        'caterer_id': self.caterer_id,
-        'name': self.name,
-        'description': self.description,
-        'price': self.price,
-        'image_url': self.image_url,
-        'created_at': self.created_at,
-        'updated_at': self.updated_at,
-        }
 
 # Define Menu model
 class Menu(db.Model, SerializerMixin):
@@ -147,7 +125,7 @@ class Menu(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 
-    def __repr__(self):
+    def _repr_(self):
         return f'<Menu(id={self.id}, day={self.day})>'
 
 
@@ -157,7 +135,7 @@ class MenuMeals(db.Model, SerializerMixin):
     menu_id = db.Column(db.Integer, db.ForeignKey('menus.id'), primary_key=True)
     meal_id = db.Column(db.Integer, db.ForeignKey('meals.id'), primary_key=True)
 
-    def __repr__(self):
+    def _repr_(self):
         return f'<MenuMeals(menu_id={self.menu_id}, meal_id={self.meal_id})>'
 
 # Define Order model
@@ -172,7 +150,7 @@ class Order(db.Model, SerializerMixin):
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
 
-    def __repr__(self):
+    def _repr_(self):
         return f'<Order(id={self.id}, user_id={self.user_id}, meal_id={self.meal_id}, quantity={self.quantity})>'
 
     @validates('quantity')
