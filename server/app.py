@@ -33,63 +33,75 @@ def index():
 
 # user authentication.
 
-# Sign up====working 
-@app.route('/signup', methods=['POST'])
-def signup():
+# Sign up====working# Register
+@app.route('/register', methods=['POST'])
+def register():
     data = request.json
-    username = request.json['username']
-    email = request.json['email']
-    password = request.json['password']
-    role = request.json['role']
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    role = data.get('role')
 
-    if not username or not email or not password:
-        return jsonify({"Message": "Missing required fields"})
+    if not (username and email and password):
+        return jsonify({"message": "Missing required fields"}), 400
 
-    user_exists = User.query.filter_by(username=username).first() is not None
-
+    user_exists = User.query.filter((User.username == username) | (User.email == email)).first()
     if user_exists:
-        return jsonify({"message": "Username already exists"}), 409
-    
+        return jsonify({"message": "Username or email already exists"}), 409
+
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     new_user = User(username=username, email=email, password=hashed_password, role=role)
     db.session.add(new_user)
     db.session.commit()
+    
+    print(f"User registered: username={username}, email={email}, role={role}")
 
-    return jsonify({'message':'Signed up successfully'}), 201
+    if role in ['caterer', 'admin']:
+        caterer = Caterer(user_id=new_user.id, username=username, email=email)
+        db.session.add(caterer)
+        db.session.commit()
+        
+        print(f"Caterer created: user_id={caterer.user_id}, name={caterer.username}")
+        
+    return jsonify({'message': 'Signed up successfully'}), 201
 
-# Login route====working
+# Login route
 @app.route('/login', methods=['POST'])
 def login():
-    auth = request.json
+
+    auth = request.get_json()
     if not auth or not auth.get('username') or not auth.get('email') or not auth.get('password'):
         return make_response("Missing username and password", 401)
-    
+
     user = User.query \
         .filter_by(username=auth.get('username'), email=auth.get('email')) \
         .first()
     if not user:
         return make_response("User does not exist.", 401)
-    
+
     if bcrypt.check_password_hash(user.password, auth.get('password')):
         token = create_access_token({
             "id": user.id,
-            "expires": datetime.utcnow() + timedelta(days=7)
+            "expires": datetime.utcnow() + timedelta(days=7),
+            "role": user.role  # Include the user's role in the response
         }, app.config['SECRET_KEY'])
         return jsonify({
-            "access token": token,
-            "message":"Logged in successfully"
+            "access_token": token,  # Change "access token" to "access_token"
+            "message": "Logged in successfully",
+            "role": user.role  # Include the user's role in the response
         })
 
     return make_response(
         'Could not verify',
         403,
         {'WWW-Authenticate': 'Basic realm = "Wrong password"'}
+    )
 
-     )
-
+    
 
 # get all users
 @app.route('/users', methods=['GET'])
+@jwt_required()
 def get_all_users():
     users = User.query.all()
 
@@ -101,7 +113,7 @@ def get_all_users():
             'username': user.username,  
             'email': user.email,          
             'password': user.password,
-            'role': user.role,           
+            'role': user.role,          
             'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'updated_at': user.updated_at.strftime('%Y-%m-%d %H:%M:%S') if user.updated_at else None
         }
@@ -110,8 +122,11 @@ def get_all_users():
     return jsonify(users_info)
 
 # to get a single user using the ID
-@app.route('/users/<int:user_id>', methods=['GET'])
+@app.route('/user/<int:user_id>', methods=['GET'])
+@jwt_required()
 def get_user_by_id(user_id):
+
+    username = get_jwt_identity()
     user = User.query.get(user_id)
 
     if user is None:
@@ -130,15 +145,16 @@ def get_user_by_id(user_id):
 
 # caterer can be able to manage orders
 
-# @app.route('/profile/<username>', methods=['GET'])
+# @app.route('/profile', methods=['GET'])
 # @jwt_required()
-# def user_profile(username):
-#     print(username)
+# def user_profile():
+
+#     username = get_jwt_identity()
 #     if not username:
 #         return jsonify({'No username found!'}), 404
     
 #     user = User.query.filter_by(username=username).first()
-#     print('user foun is:', user)
+#     print('user found is:', user)
 
 #     if not user:
 #         return jsonify({'User not found!'}), 404
@@ -152,18 +168,17 @@ def get_user_by_id(user_id):
 
 #     return jsonify(response_body)
 
-
 @app.route('/caterers', methods=['GET'])
 def get_all_caterers():
     caterers = Caterer.query.all()
-    
+   
     caterers_info = []
 
     for caterer in caterers:
         caterer_info = {
             'id': caterer.id,
             'user_id': caterer.user_id,
-            'name': caterer.name,
+            'username': caterer.username,
             'created_at': caterer.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'updated_at': caterer.updated_at.strftime('%Y-%m-%d %H:%M:%S') if caterer.updated_at else None
         }
@@ -171,23 +186,7 @@ def get_all_caterers():
 
     return jsonify(caterers_info)
 
-# @app.route('/caterer/info', methods=['GET'])
-# @jwt_required()
-# def get_caterer_info():
-#     current_user = get_jwt_identity()
-#     caterer = Caterer.query.filter_by(user_id=current_user['id']).first()
 
-#     if not caterer:
-#         return jsonify({'message': 'Caterer not found'}), 404
-
-#     response_body = {
-#         'name': caterer.name,
-#         'star_meal': caterer.star_meal,
-#         'created_at': caterer.created_at,
-#         'updated_at': caterer.updated_at
-#     }
-
-#     return jsonify(response_body)
 
 @app.route('/caterers', methods=['POST'])
 def caterer_login():
@@ -204,7 +203,7 @@ def caterer_login():
 
     if bcrypt.check_password_hash(user.password, password):
         token = create_access_token({'id': user.id, 'role': user.role})
-        return jsonify({"access_token": token})
+        return jsonify({"access_token": token, "message":"Logged in successfully"})
 
     return jsonify({"message": "Invalid credentials!"}), 404
 
@@ -225,7 +224,7 @@ def refresh_token(response):
         return response
     except (RuntimeError, KeyError):
         return response
-    
+   
 
 
 @app.route('/password', methods=['POST'])
@@ -254,9 +253,10 @@ def change_password():
 @jwt_required()
 def manage_meal_options():
     current_user = get_jwt()
+    print(current_user)
 
     # Check if the user's role is 'admin' or 'caterer' to proceed
-    if current_user["role"] not in ["admin", "caterer"]:
+    if 'role' not in current_user or current_user['role'] not in ['caterer', 'admin']:
         return jsonify({"message": "Access denied"}), 403
 
     if request.method == 'GET':
@@ -327,22 +327,78 @@ def manage_meal_options():
         else:
             return jsonify({"message": "Meal option not found"}), 404
 
-@app.route('/menu/<date>', methods=['POST'])
-def set_menu(date):
-    menu_items = request.json.get('menu_items')
-    menu = Meal(date=date, items=menu_items)
-    db.session.add(menu)
+
+# Get the menu for a specific day
+@app.route('/menu/<date>', methods=['GET'])
+def get_menu_by_date(date):
+    # Parse the date parameter to a Python date object
+    try:
+        date_obj = datetime.strptime(date, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"message": "Invalid date format. Please use 'YYYY-MM-DD'."}), 400
+
+    # Query the menu for the specified date
+    menu = menu.query.filter_by(day=date_obj).first()
+
+    if not menu:
+        return jsonify({"message": f"No menu found for {date}"}), 404
+
+    # Get the meals included in the menu
+    menu_meals = menu_meals.query.filter_by(menu_id=menu.id).all()
+
+    # Create a list of meal details for the menu
+    menu_items = []
+    for menu_meal in menu_meals:
+        meal = Meal.query.get(menu_meal.meal_id)
+        menu_items.append({
+            "meal_id": meal.id,
+            "name": meal.name,
+            "description": meal.description,
+            "price": float(meal.price),  # Convert Decimal to float for JSON serialization
+            "image_url": meal.image_url,
+        })
+
+    return jsonify({
+        "menu_id": menu.id,
+        "day": menu.day.strftime('%Y-%m-%d'),
+        "menu_items": menu_items,
+    })
+
+# Place an order for a meal from the menu
+@app.route('/order', methods=['POST'])
+@jwt_required()
+def place_order():
+    current_user = get_jwt_identity()
+    user_id = current_user.get('id')
+
+    data = request.json
+    meal_id = data.get('meal_id')
+    quantity = data.get('quantity')
+
+    if not meal_id or not quantity:
+        return jsonify({"message": "Meal ID and quantity are required fields."}), 400
+
+    meal = Meal.query.get(meal_id)
+
+    if not meal:
+        return jsonify({"message": "Meal not found."}), 404
+
+    # Calculate the total amount for the order
+    total_amount = meal.price * quantity
+
+    # Create the order and add it to the database
+    order = Order(
+        user_id=user_id,
+        meal_id=meal_id,
+        quantity=quantity,
+        total_amount=total_amount,
+    )
+    db.session.add(order)
     db.session.commit()
-    return jsonify({"message": f"Menu set successfully for {date}"})
 
+    return jsonify({"message": "Order placed successfully."}), 201
 
-# orders
-@app.route('/orders', methods=['GET'])
-def view_orders():
-    orders = Order.query.all()
-    orders_list = [order.to_dict() for order in orders]
-    return jsonify({"orders": orders_list})
-
+# Changing an order status
 @app.route('/order/<order_id>', methods=['PUT'])
 def change_order_status(order_id):
     new_status = request.json.get('new_status')
@@ -353,6 +409,13 @@ def change_order_status(order_id):
         return jsonify({"message": "Order status changed successfully"})
     else:
         return jsonify({"message": "Order not found"})
+    
+# View all orders
+@app.route('/orders', methods=['GET'])
+def view_orders():
+    orders = Order.query.all()
+    orders_list = [order.to_dict() for order in orders]
+    return jsonify({"orders": orders_list})
 
 @app.route('/earnings', methods=['GET'])
 def view_earnings():
@@ -374,4 +437,4 @@ def logout():
     return response
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5555)
+    app.run(debug=True, port=5000)
